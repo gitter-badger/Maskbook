@@ -2,20 +2,12 @@
 #
 # Check https://circleci.com/docs/2.0/language-javascript/ for more details
 #
-version: 2
+version: 2.1
 jobs:
     build:
         docker:
-            # specify the version you desire here
             - image: circleci/node:11.0
-
-            # Specify service dependencies here if necessary
-            # CircleCI maintains a library of pre-built images
-            # documented at https://circleci.com/docs/2.0/circleci-images/
-            # - image: circleci/mongo:3.4.4
-
         working_directory: ~/repo
-
         steps:
             # build holoflows-kit
             - run: |
@@ -60,6 +52,33 @@ jobs:
                   paths:
                       - .tscache/
                   key: tsbuild-cache
-            - run: zip -r build.zip build/
+            - run: zip -r Maskbook.zip build/
             - store_artifacts:
-                  path: build.zip
+                  path: Maskbook.zip
+            - persist_to_workspace:
+                  path: ~/repo/
+                  paths:
+                      - Maskbook.zip
+    publish-github-release:
+        docker:
+            - image: cibuilds/github:0.10
+        steps:
+            - attach_workspace:
+                  at: ~/repo/
+            - run:
+                  name: 'Publish Release on GitHub'
+                  command: |
+                      ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} --replace ~/repo/Maskbook.zip
+
+workflows:
+    version: 2
+    main:
+        jobs:
+            - build
+            - publish-github-release:
+                  requires:
+                      - build
+                  filters:
+                      branches:
+                          only:
+                              - released
